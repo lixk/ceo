@@ -19,5 +19,5 @@ setup(
     # packages=find_packages(),
     # include_package_data=True,
     platforms="any",
-    install_requires=["aiohttp", "aiohttp_cors"]
+    install_requires=["aiohttp", "aiohttp_cors", 'websockets']
 )
