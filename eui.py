@@ -12,12 +12,13 @@ from queue import Queue
 _RECEIVE_QUEUE = Queue()
 _SEND_QUEUE = Queue()
 _DISPATCHERS = ThreadPoolExecutor(max_workers=100)
-handlers = {}
+_HANDLERS = {}
 
+# eui.js template
 _JS_TEMPLATE = '''
 var ws = new WebSocket("ws://localhost:%s");
 ws.onopen = function () {
- console.log('connect to server!');
+ console.log('connect to eui server!');
 }
 
 ws.onmessage = function (evt) {
@@ -42,6 +43,11 @@ window.eui.py = function(handler){
 
 
 def _get_headers(data):
+    """
+    get headers from data
+    :param data: parsed message
+    :return: headers
+    """
     headers = {}
     data = str(data, encoding="utf-8")
     header_str, body = data.split("\r\n\r\n", 1)
@@ -55,6 +61,13 @@ def _get_headers(data):
 
 
 def _parse_payload(payload):
+    """
+    parse payload message
+
+    :param payload: message
+    :return: parsed string message
+    """
+
     payload_len = payload[1] & 127
     if payload_len == 126:
         mask = payload[4:8]
@@ -67,18 +80,27 @@ def _parse_payload(payload):
         mask = payload[2:6]
         decoded = payload[6:]
 
-    bytes_list = bytearray()
+    byte_list = bytearray()
+    for i, b in enumerate(decoded):
+        chunk = b ^ mask[i % 4]
+        byte_list.append(chunk)
 
-    for i in range(len(decoded)):
-        chunk = decoded[i] ^ mask[i % 4]
-        bytes_list.append(chunk)
-    body = str(bytes_list, encoding='utf-8')
-    return body
+    if byte_list == bytearray(b'\x03\xe9'):
+        print('client closed!')
+        os._exit(0)
+    return str(byte_list, encoding='utf-8')
 
 
-def _send_msg(conn, msg_bytes):
+def _send_msg(connection, message_bytes):
+    """
+    send message to client
+
+    :param connection: connection
+    :param message_bytes: message bytes
+    :return:
+    """
     token = b"\x81"
-    length = len(msg_bytes)
+    length = len(message_bytes)
     if length < 126:
         token += struct.pack("B", length)
     elif length <= 0xFFFF:
@@ -86,29 +108,52 @@ def _send_msg(conn, msg_bytes):
     else:
         token += struct.pack("!BQ", 127, length)
 
-    msg = token + msg_bytes
-    conn.sendall(msg)
-    return True
+    msg = token + message_bytes
+    connection.sendall(msg)
 
 
-def start(host="0.0.0.0", port=None, static_dir='./static', startup_callback=None,
+def start(host="0.0.0.0", port=None, handlers=None, static_dir='./static', startup_callback=None,
           max_message_size=1 * 1024 * 1024):
-    if port is None:
-        port = random.randint(5000, 10000)
+    """
+    start eui
 
+    :param host: host
+    :param port: port, if port is None, port will be a random int value
+    :param handlers: python function for js call
+    :param static_dir: generate js file path, could not end with '/'
+    :param startup_callback: the function after eui startup to run
+    :param max_message_size: each message max size
+    :return:
+    """
+    global _HANDLERS
+
+    # init port
+    if port is None:
+        port = random.randint(5000, 50000)
+
+    # init handlers
+    if handlers:
+        _HANDLERS = handlers
+
+    # init js file
     _init_js(port, static_dir)
 
+    # init socket
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind((host, port))
     sock.listen(5)
 
+    # startup callback function
     _startup_callback(startup_callback)
-    print('-' * 10, f' eui server start up at port {port} ', '-' * 10)
+    print('*' * 20, f'eui start up at port {port}', '*' * 20)
 
-    conn, addr = sock.accept()
-    print(conn)
-    data = conn.recv(max_message_size)
+    # accept connection
+    connection, addr = sock.accept()
+    print(f'client {addr} connect success!')
+
+    # receive connection message
+    data = connection.recv(max_message_size)
     headers = _get_headers(data)
     response_tpl = "HTTP/1.1 101 Switching Protocols\r\n" \
                    "Upgrade:websocket\r\n" \
@@ -117,23 +162,31 @@ def start(host="0.0.0.0", port=None, static_dir='./static', startup_callback=Non
                    "WebSocket-Location: ws://%s\r\n\r\n"
 
     magic_string = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
-
     value = ''
     if headers.get('Sec-WebSocket-Key'):
         value = headers['Sec-WebSocket-Key'] + magic_string
     ac = base64.b64encode(hashlib.sha1(value.encode('utf-8')).digest())
     response_str = response_tpl % (ac.decode('utf-8'), headers.get("Host"))
-    conn.sendall(bytes(response_str, encoding="utf-8"))
+    connection.sendall(bytes(response_str, encoding="utf-8"))
+
     # startup dispatcher and send message worker
     _startup_dispatcher()
-    _startup_send_message_worker(conn)
+    _startup_send_message_worker(connection)
 
+    # receive client message
     while True:
-        data = conn.recv(max_message_size)
+        data = connection.recv(max_message_size)
         _RECEIVE_QUEUE.put(json.loads(_parse_payload(data)))
 
 
 def _init_js(port, static_dir):
+    """
+    generate js file
+
+    :param port: eui server port
+    :param static_dir: dir for eui.js
+    :return:
+    """
     os.makedirs(static_dir, exist_ok=True)
     with open(f'{static_dir}/eui.js', 'w', encoding='utf-8') as f:
         f.write(_JS_TEMPLATE % port)
@@ -143,7 +196,7 @@ def _startup_dispatcher():
     def run():
         while True:
             data = _RECEIVE_QUEUE.get()
-            handler = handlers[data['handler']]
+            handler = _HANDLERS[data['handler']]
             args = data.get('args', None)
             if args:
                 _DISPATCHERS.submit(handler, *args)
@@ -155,11 +208,11 @@ def _startup_dispatcher():
     send_thread.start()
 
 
-def _startup_send_message_worker(conn):
+def _startup_send_message_worker(connection):
     def run():
         while True:
             data = _SEND_QUEUE.get()
-            _send_msg(conn, data.encode('utf-8'))
+            _send_msg(connection, data.encode('utf-8'))
 
     send_thread = threading.Thread(target=run)
     send_thread.setDaemon(True)
@@ -167,6 +220,11 @@ def _startup_send_message_worker(conn):
 
 
 def _startup_callback(fn):
+    """
+    startup callback function
+    :param fn: callback function
+    :return:
+    """
     if not fn:
         return
     callback_thread = threading.Thread(target=fn)
@@ -175,6 +233,13 @@ def _startup_callback(fn):
 
 
 def js(handler, *args):
+    """
+    call js function
+
+    :param handler: js function
+    :param args: js function args
+    :return:
+    """
     data = json.dumps({'handler': handler, 'args': args}, ensure_ascii=True)
     _SEND_QUEUE.put(data)
 
@@ -184,5 +249,5 @@ def hello(name):
 
 
 if __name__ == "__main__":
-    handlers['hello'] = hello
+    _HANDLERS['hello'] = hello
     start()
