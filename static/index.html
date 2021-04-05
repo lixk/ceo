@@ -1,0 +1,29 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>eui test</title>
+    <script src="eui.js"></script>
+    <script type="text/javascript">
+      function sendMessage() {
+         var message = document.getElementById('message').value;
+         eui.py('say_hello', message);
+      }
+
+      function sayHello(message) {
+         alert('receive message from py: ' + message);
+      }
+
+
+    </script>
+
+</head>
+
+<body>
+<input id="message">
+<button onclick="sendMessage()">Send</button>
+
+</body>
+
+</html>

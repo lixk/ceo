@@ -1,9 +1,20 @@
+import os
+import webbrowser
+
 import eui
 
 
-def callback():
-    import webbrowser
-    webbrowser.open('index.html')
+def say_hello(message):
+    print('receive message from js:', message)
+    eui.js('sayHello', message)
 
 
-eui.start(startup_callback=callback)
+def startup_callback():
+    webbrowser.open(os.getcwd() + '/static/index.html')
+
+
+handlers = {
+    'say_hello': say_hello
+}
+
+eui.start(handlers=handlers, startup_callback=startup_callback)

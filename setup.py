@@ -7,7 +7,7 @@ setup(
     name="eui",
     version="0.0.2",
     keywords=["pip", "eui"],
-    description="a fast and simple micro-framework for small web applications",
+    description="a fast and simple micro-framework for small browser-based applications",
     long_description=long_description,
     long_description_content_type='text/markdown',  # This is important!
     license="MIT Licence",
@@ -19,5 +19,5 @@ setup(
     # packages=find_packages(),
     # include_package_data=True,
     platforms="any",
-    install_requires=["aiohttp", "aiohttp_cors", 'websockets']
+    install_requires=[]
 )

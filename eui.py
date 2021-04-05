@@ -17,7 +17,7 @@ _DISPATCHERS = futures.ThreadPoolExecutor(max_workers=100)
 _HANDLERS = {}
 
 # eui.js template
-_JS_TEMPLATE = '''//eui client
+_JS_TEMPLATE = '''//eui js code
 var ws = new WebSocket("ws://localhost:%s");
 ws.onopen = function () {
    console.log('connect to eui server!');
@@ -111,14 +111,14 @@ def _parse_payload(payload):
         byte_list.append(chunk)
 
     if byte_list == bytearray(b'\x03\xe9'):
-        log.info('client closed, eui exit!')
+        log.info('ui closed, eui exit!')
         os._exit(0)
     return str(byte_list, encoding='utf-8')
 
 
 def _send_msg(connection, message_bytes):
     """
-    send message to client
+    send message to ui
 
     :param connection: connection
     :param message_bytes: message bytes
@@ -250,7 +250,7 @@ def start(host="0.0.0.0", port=None, handlers=None, static_dir='./static', start
 
     # accept connection
     connection, addr = sock.accept()
-    log.info(f'client {addr} connect success!')
+    log.info(f'ui {addr} connect success!')
 
     # receive connection message
     data = connection.recv(max_message_size)
@@ -273,16 +273,8 @@ def start(host="0.0.0.0", port=None, handlers=None, static_dir='./static', start
     _startup_dispatcher()
     _startup_send_message_worker(connection)
 
-    # receive client message
+    # receive ui message
     while True:
         data = connection.recv(max_message_size)
         _RECEIVE_QUEUE.put(json.loads(_parse_payload(data)))
 
-
-def hello(name):
-    js('hello', name)
-
-
-if __name__ == "__main__":
-    _HANDLERS['hello'] = hello
-    start()

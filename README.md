@@ -1,36 +1,66 @@
 # eui
 a fast and simple micro-framework for small browser-based applications
 
-### example
-server:
+## example
+### Step 1:
+create python file:
 ```python
 import eui
-import time
+import webbrowser
+import os
 
 
-def get_time():
-    return str(time.time())
+def say_hello(message):
+    print('receive message from js:', message)
+    eui.js('sayHello', message)
 
 
-service = {'get_time': get_time}
+def startup_callback():
+    # open UI file in browser
+    webbrowser.open(os.getcwd() + '/static/index.html')
 
-eui.run(service, static_dir='web/')
+
+handlers = {
+    'say_hello': say_hello
+}
+
+eui.start(handlers=handlers, startup_callback=startup_callback)
 
 ```
-UI
+
+### Step 2:
+create UI file, save as index.html in static folder:
 ```html
-<!DOCTYPE html>
+<!DOCTYPE HTML>
 <html>
+
 <head>
-  <script src="eui.js"></script>
+   <meta charset="utf-8">
+   <title>eui test</title>
+   <script src="eui.js"></script>
+   <script type="text/javascript">
+      function sendMessage() {
+         var message = document.getElementById('message').value;
+         eui.py('say_hello', message);
+      }
+
+      function sayHello(message) {
+         alert('receive message from py: ' + message);
+      }
+
+   </script>
+
 </head>
+
 <body>
-<script>
-eui.run('get_time', {}, function(data){
-	    console.log(data);
-	  });
-</script>
+   <input id="message">
+   <button onclick="sendMessage()">Send</button>
+
 </body>
+
 </html>
 
 ```
+
+### Step 3:
+run python file
