@@ -15,22 +15,13 @@
          alert(name);
       }
 
-      window.onbeforeunload = function(event) {
-          return "您编辑的信息尚未保存，您确定要离开吗？"//这里内容不会显示在提示框，为了增加语义化。
-    };
-
-      function closeWindow() {
-         window.location.href = "about:blank";
-         window.close();
-      }
-
     </script>
 
 </head>
 
 <body>
 <input id="msg">
-<button onclick="closeWindow()">关闭</button>
+<button onclick="send()">发送</button>
 
 </body>
 
