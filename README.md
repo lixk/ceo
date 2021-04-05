@@ -3,7 +3,7 @@ a fast and simple micro-framework for small browser-based applications
 
 ## example
 ### Step 1:
-create python file:
+create python file, `main.py`:
 ```python
 import eui
 import webbrowser
@@ -29,7 +29,7 @@ eui.start(handlers=handlers, startup_callback=startup_callback)
 ```
 
 ### Step 2:
-create UI file, save as index.html in static folder:
+create UI file `index.html` in `static` folder:
 ```html
 <!DOCTYPE HTML>
 <html>
@@ -63,4 +63,6 @@ create UI file, save as index.html in static folder:
 ```
 
 ### Step 3:
-run python file
+run `main.py`
+snapshot:
+![snapshot]()

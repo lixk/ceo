@@ -5,9 +5,9 @@ with open('README.md', 'r', encoding='utf-8') as f:
 
 setup(
     name="eui",
-    version="0.0.2",
+    version="0.0.1",
     keywords=["pip", "eui"],
-    description="a fast and simple micro-framework for small browser-based applications",
+    description="a fast and simple micro-framework for small browser-based application",
     long_description=long_description,
     long_description_content_type='text/markdown',  # This is important!
     license="MIT Licence",
